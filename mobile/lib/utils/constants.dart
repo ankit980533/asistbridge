@@ -1,11 +1,9 @@
 class ApiConstants {
-  // ngrok public URL
-  static const String baseUrl = 'https://proverbial-jane-hazardous.ngrok-free.dev/api';
+  // Production URL (Render)
+  static const String baseUrl = 'https://asistbridge.onrender.com/api';
   
-  // For Android Emulator use 10.0.2.2 (localhost of host machine)
+  // For local development:
   // static const String baseUrl = 'http://10.0.2.2:8080/api';  // Android Emulator
-  // static const String baseUrl = 'http://192.168.x.x:8080/api';  // Physical Device
-  // static const String baseUrl = 'http://localhost:8080/api';  // iOS Simulator
   
   // Auth
   static const String sendOtp = '/auth/send-otp';

@@ -11,9 +11,9 @@ public class OtpVerifyRequest {
     @Pattern(regexp = "^\\+?[1-9]\\d{9,14}$", message = "Invalid phone number")
     private String phone;
     
-    @NotBlank(message = "OTP is required")
-    @Size(min = 6, max = 6, message = "OTP must be 6 digits")
-    private String otp;
+    private String otp; // Optional when using Firebase
+    
+    private String firebaseToken; // Firebase ID token
     
     private String name;
     

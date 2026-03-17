@@ -1,50 +1,79 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 import '../models/user.dart';
 import '../services/api_service.dart';
+import '../services/firebase_auth_service.dart';
 import '../utils/constants.dart';
 
 class AuthProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
+  final FirebaseAuthService _firebaseAuth = FirebaseAuthService();
+  
   User? _user;
   bool _isLoading = false;
   String? _error;
+  bool _otpSent = false;
   
   User? get user => _user;
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isAuthenticated => _user != null;
+  bool get otpSent => _otpSent;
   
+  // Send OTP via Firebase (FREE!)
   Future<bool> sendOtp(String phone) async {
     _isLoading = true;
     _error = null;
+    _otpSent = false;
     notifyListeners();
     
-    try {
-      await _api.post(ApiConstants.sendOtp, data: {'phone': phone});
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _error = 'Failed to send OTP';
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
+    final completer = Completer<bool>();
+    
+    await _firebaseAuth.sendOtp(
+      phone: phone,
+      onCodeSent: (message) {
+        _otpSent = true;
+        _isLoading = false;
+        notifyListeners();
+        completer.complete(true);
+      },
+      onError: (error) {
+        _error = error;
+        _isLoading = false;
+        notifyListeners();
+        completer.complete(false);
+      },
+      onAutoVerify: (credential) async {
+        // Auto-verified on Android
+        await _signInWithCredential(credential, phone);
+        completer.complete(true);
+      },
+    );
+    
+    return completer.future;
   }
   
-  Future<bool> verifyOtp(String phone, String otp, {String? name, String? role, String? fcmToken}) async {
+  // Verify OTP
+  Future<bool> verifyOtp(String phone, String otp, {String? name, String? role}) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
     
     try {
+      // Verify with Firebase
+      final firebaseToken = await _firebaseAuth.verifyOtp(otp);
+      
+      if (firebaseToken == null) {
+        throw Exception('Failed to get Firebase token');
+      }
+      
+      // Send Firebase token to our backend to create/login user
       final response = await _api.post(ApiConstants.verifyOtp, data: {
         'phone': phone,
-        'otp': otp,
+        'firebaseToken': firebaseToken,
         'name': name,
         'role': role,
-        'fcmToken': fcmToken,
       });
       
       final data = response.data['data'];
@@ -55,14 +84,43 @@ class AuthProvider extends ChangeNotifier {
         phone: data['phone'],
         role: data['role'],
       );
+      
       _isLoading = false;
+      _otpSent = false;
       notifyListeners();
       return true;
     } catch (e) {
-      _error = 'Invalid OTP';
+      _error = e.toString().replaceAll('Exception: ', '');
       _isLoading = false;
       notifyListeners();
       return false;
+    }
+  }
+  
+  Future<void> _signInWithCredential(fb.PhoneAuthCredential credential, String phone) async {
+    try {
+      final firebaseToken = await _firebaseAuth.signInWithCredential(credential);
+      
+      final response = await _api.post(ApiConstants.verifyOtp, data: {
+        'phone': phone,
+        'firebaseToken': firebaseToken,
+      });
+      
+      final data = response.data['data'];
+      await _api.setToken(data['token']);
+      _user = User(
+        id: data['userId'],
+        name: data['name'],
+        phone: data['phone'],
+        role: data['role'],
+      );
+      
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
@@ -77,7 +135,6 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      // Clear token on any error (timeout, network, auth failure)
       await _api.clearToken();
       return false;
     }
@@ -85,6 +142,7 @@ class AuthProvider extends ChangeNotifier {
   
   Future<void> logout() async {
     await _api.clearToken();
+    await _firebaseAuth.signOut();
     _user = null;
     notifyListeners();
   }

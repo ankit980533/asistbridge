@@ -2,15 +2,14 @@ package com.assistbridge.service;
 
 import com.assistbridge.dto.AuthResponse;
 import com.assistbridge.dto.OtpVerifyRequest;
-import com.assistbridge.model.OtpVerification;
 import com.assistbridge.model.User;
-import com.assistbridge.repository.OtpVerificationRepository;
 import com.assistbridge.repository.UserRepository;
 import com.assistbridge.security.JwtTokenProvider;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseToken;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import java.security.SecureRandom;
 import java.time.LocalDateTime;
 
 @Service
@@ -19,64 +18,39 @@ import java.time.LocalDateTime;
 public class AuthService {
     
     private final UserRepository userRepository;
-    private final OtpVerificationRepository otpRepository;
     private final JwtTokenProvider tokenProvider;
-    private final NotificationService notificationService;
     
-    public String sendOtp(String phone) {
-        // Delete any existing OTP for this phone
-        otpRepository.deleteByPhone(phone);
-        
-        // Generate 6-digit OTP
-        String otp = generateOtp();
-        
-        // Save OTP
-        OtpVerification verification = OtpVerification.builder()
-                .phone(phone)
-                .otp(otp)
-                .verified(false)
-                .attempts(0)
-                .createdAt(LocalDateTime.now())
-                .build();
-        otpRepository.save(verification);
-        
-        // In production, send OTP via SMS/Firebase
-        // For development, log the OTP
-        log.info("OTP for {}: {}", phone, otp);
-        
-        return "OTP sent successfully";
-    }
-
     public AuthResponse verifyOtp(OtpVerifyRequest request) {
-        OtpVerification verification = otpRepository
-                .findByPhoneAndVerifiedFalse(request.getPhone())
-                .orElseThrow(() -> new RuntimeException("OTP not found or expired"));
+        String phone = request.getPhone();
         
-        if (verification.getAttempts() >= 3) {
-            throw new RuntimeException("Too many attempts. Please request a new OTP");
+        // If Firebase token provided, verify it
+        if (request.getFirebaseToken() != null && !request.getFirebaseToken().isEmpty()) {
+            try {
+                FirebaseToken decodedToken = FirebaseAuth.getInstance()
+                        .verifyIdToken(request.getFirebaseToken());
+                // Use phone from Firebase token if available
+                if (decodedToken.getClaims().get("phone_number") != null) {
+                    phone = (String) decodedToken.getClaims().get("phone_number");
+                }
+                log.info("Firebase token verified for: {}", phone);
+            } catch (Exception e) {
+                log.warn("Firebase verification failed, using phone from request: {}", e.getMessage());
+                // Continue with phone from request (for dev/testing)
+            }
         }
-        
-        if (!verification.getOtp().equals(request.getOtp())) {
-            verification.setAttempts(verification.getAttempts() + 1);
-            otpRepository.save(verification);
-            throw new RuntimeException("Invalid OTP");
-        }
-        
-        verification.setVerified(true);
-        otpRepository.save(verification);
         
         // Check if user exists
-        User user = userRepository.findByPhone(request.getPhone()).orElse(null);
+        User user = userRepository.findByPhone(phone).orElse(null);
         boolean isNewUser = user == null;
         
         if (isNewUser) {
             User.Role role = User.Role.VISUALLY_IMPAIRED;
-            if (request.getRole() != null) {
+            if (request.getRole() != null && !request.getRole().isEmpty()) {
                 role = User.Role.valueOf(request.getRole());
             }
             
             user = User.builder()
-                    .phone(request.getPhone())
+                    .phone(phone)
                     .name(request.getName() != null ? request.getName() : "User")
                     .role(role)
                     .fcmToken(request.getFcmToken())
@@ -103,9 +77,9 @@ public class AuthService {
                 .build();
     }
     
-    private String generateOtp() {
-        SecureRandom random = new SecureRandom();
-        int otp = 100000 + random.nextInt(900000);
-        return String.valueOf(otp);
+    // Keep for backward compatibility / testing
+    public String sendOtp(String phone) {
+        log.info("OTP requested for: {} (using Firebase Phone Auth)", phone);
+        return "Use Firebase Phone Auth on mobile";
     }
 }

@@ -82,4 +82,18 @@ public class AuthService {
         log.info("OTP requested for: {} (using Firebase Phone Auth)", phone);
         return "Use Firebase Phone Auth on mobile";
     }
+    
+    // Create admin token for web dashboard
+    public AuthResponse createAdminToken() {
+        String token = tokenProvider.generateToken("admin", "ADMIN");
+        
+        return AuthResponse.builder()
+                .token(token)
+                .userId("admin")
+                .name("Admin")
+                .phone("")
+                .role(User.Role.ADMIN)
+                .newUser(false)
+                .build();
+    }
 }

@@ -7,8 +7,11 @@ import com.assistbridge.dto.OtpVerifyRequest;
 import com.assistbridge.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -16,6 +19,12 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
     
     private final AuthService authService;
+    
+    @Value("${admin.username:admin}")
+    private String adminUsername;
+    
+    @Value("${admin.password:AssistBridge@2024}")
+    private String adminPassword;
     
     @PostMapping("/send-otp")
     public ResponseEntity<ApiResponse<String>> sendOtp(@Valid @RequestBody AuthRequest request) {
@@ -28,5 +37,18 @@ public class AuthController {
             @Valid @RequestBody OtpVerifyRequest request) {
         AuthResponse response = authService.verifyOtp(request);
         return ResponseEntity.ok(ApiResponse.success("Login successful", response));
+    }
+    
+    @PostMapping("/admin-login")
+    public ResponseEntity<ApiResponse<AuthResponse>> adminLogin(@RequestBody Map<String, String> request) {
+        String username = request.get("username");
+        String password = request.get("password");
+        
+        if (adminUsername.equals(username) && adminPassword.equals(password)) {
+            AuthResponse response = authService.createAdminToken();
+            return ResponseEntity.ok(ApiResponse.success("Login successful", response));
+        }
+        
+        return ResponseEntity.status(401).body(ApiResponse.error("Invalid credentials"));
     }
 }

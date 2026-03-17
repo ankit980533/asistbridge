@@ -1,36 +1,74 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
-import { authApi } from '@/lib/api'
+import { auth, setupRecaptcha, sendOtp, verifyOtp } from '@/lib/firebase'
+import { RecaptchaVerifier } from 'firebase/auth'
+import api from '@/lib/api'
 import toast from 'react-hot-toast'
 
 export default function LoginPage() {
   const [phone, setPhone] = useState('')
   const [otp, setOtp] = useState('')
   const [otpSent, setOtpSent] = useState(false)
-  const { login, isLoading } = useAuthStore()
+  const [isLoading, setIsLoading] = useState(false)
+  const recaptchaRef = useRef<RecaptchaVerifier | null>(null)
+  const { setToken, setUser } = useAuthStore()
   const router = useRouter()
+
+  useEffect(() => {
+    recaptchaRef.current = setupRecaptcha('recaptcha-container')
+  }, [])
 
   const handleSendOtp = async () => {
     if (!phone) return toast.error('Enter phone number')
-    try {
-      await authApi.sendOtp(phone)
+    if (!recaptchaRef.current) return toast.error('Recaptcha not loaded')
+    
+    setIsLoading(true)
+    const result = await sendOtp(phone, recaptchaRef.current)
+    setIsLoading(false)
+    
+    if (result.success) {
       setOtpSent(true)
       toast.success('OTP sent!')
-    } catch {
-      toast.error('Failed to send OTP')
+    } else {
+      toast.error(result.error || 'Failed to send OTP')
     }
   }
 
   const handleLogin = async () => {
     if (!otp) return toast.error('Enter OTP')
-    const isAdmin = await login(phone, otp)
-    if (isAdmin) {
-      router.push('/dashboard')
-    } else {
-      toast.error('Admin access only')
+    
+    setIsLoading(true)
+    const result = await verifyOtp(otp)
+    
+    if (!result.success) {
+      setIsLoading(false)
+      return toast.error(result.error || 'Invalid OTP')
     }
+
+    try {
+      // Send Firebase token to backend
+      const response = await api.post('/auth/verify-otp', {
+        phone: result.phone,
+        firebaseToken: result.idToken,
+      })
+      
+      const data = response.data.data
+      
+      if (data.role !== 'ADMIN') {
+        setIsLoading(false)
+        return toast.error('Admin access only')
+      }
+      
+      setToken(data.token)
+      setUser({ id: data.userId, name: data.name, phone: data.phone, role: data.role })
+      toast.success('Login successful!')
+      router.push('/dashboard')
+    } catch (error) {
+      toast.error('Login failed')
+    }
+    setIsLoading(false)
   }
 
   return (
@@ -39,7 +77,7 @@ export default function LoginPage() {
         <h1 className="text-2xl font-bold text-center mb-6">AssistBridge Admin</h1>
         <input
           type="tel"
-          placeholder="Phone Number"
+          placeholder="Phone Number (+91...)"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
           className="w-full p-3 border rounded mb-4"
@@ -62,6 +100,7 @@ export default function LoginPage() {
         >
           {isLoading ? 'Loading...' : otpSent ? 'Login' : 'Send OTP'}
         </button>
+        <div id="recaptcha-container"></div>
       </div>
     </div>
   )

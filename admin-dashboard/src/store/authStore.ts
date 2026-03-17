@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { authApi } from '@/lib/api'
 
 interface User {
   id: string
@@ -12,7 +11,8 @@ interface AuthState {
   user: User | null
   token: string | null
   isLoading: boolean
-  login: (phone: string, otp: string) => Promise<boolean>
+  setToken: (token: string) => void
+  setUser: (user: User) => void
   logout: () => void
   checkAuth: () => void
 }
@@ -22,18 +22,13 @@ export const useAuthStore = create<AuthState>((set) => ({
   token: typeof window !== 'undefined' ? localStorage.getItem('token') : null,
   isLoading: false,
   
-  login: async (phone, otp) => {
-    set({ isLoading: true })
-    try {
-      const res = await authApi.verifyOtp(phone, otp)
-      const { token, userId, name, role } = res.data.data
-      localStorage.setItem('token', token)
-      set({ token, user: { id: userId, name, phone, role }, isLoading: false })
-      return role === 'ADMIN'
-    } catch {
-      set({ isLoading: false })
-      return false
-    }
+  setToken: (token) => {
+    localStorage.setItem('token', token)
+    set({ token })
+  },
+  
+  setUser: (user) => {
+    set({ user })
   },
   
   logout: () => {

@@ -1,0 +1,22 @@
+server:
+  port: ${PORT:8080}
+
+spring:
+  application:
+    name: assistbridge-backend
+  data:
+    mongodb:
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/assistbridge}
+      database: assistbridge
+
+jwt:
+  secret: ${JWT_SECRET:your-256-bit-secret-key-here-make-it-long-enough-for-security}
+  expiration: 86400000 # 24 hours
+
+firebase:
+  config-path: classpath:firebase-service-account.json
+
+logging:
+  level:
+    com.assistbridge: INFO
+    org.springframework.security: INFO

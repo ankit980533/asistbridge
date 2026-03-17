@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: assistbridge-backend
+    env: java
+    buildCommand: ./mvnw clean install -DskipTests
+    startCommand: java -jar target/assistbridge-backend-1.0.0.jar
+    envVars:
+      - key: SPRING_DATA_MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true

@@ -12,8 +12,8 @@ class ApiService {
   ApiService._internal() {
     _dio = Dio(BaseOptions(
       baseUrl: ApiConstants.baseUrl,
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
+      connectTimeout: const Duration(seconds: 60),
+      receiveTimeout: const Duration(seconds: 60),
     ));
     
     _dio.interceptors.add(InterceptorsWrapper(
@@ -28,6 +28,20 @@ class ApiService {
         return handler.next(error);
       },
     ));
+  }
+  
+  // Retry wrapper for important requests
+  Future<Response> _retryRequest(Future<Response> Function() request, {int retries = 2}) async {
+    for (int i = 0; i <= retries; i++) {
+      try {
+        return await request();
+      } on DioException catch (e) {
+        if (i == retries) rethrow;
+        // Wait before retry (exponential backoff)
+        await Future.delayed(Duration(seconds: (i + 1) * 2));
+      }
+    }
+    throw Exception('Request failed after retries');
   }
   
   Future<void> setToken(String token) async {
@@ -46,7 +60,10 @@ class ApiService {
     return await _dio.get(path, queryParameters: params);
   }
   
-  Future<Response> post(String path, {dynamic data}) async {
+  Future<Response> post(String path, {dynamic data, bool retry = true}) async {
+    if (retry) {
+      return await _retryRequest(() => _dio.post(path, data: data));
+    }
     return await _dio.post(path, data: data);
   }
   

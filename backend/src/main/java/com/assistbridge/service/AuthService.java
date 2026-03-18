@@ -39,8 +39,33 @@ public class AuthService {
             }
         }
         
-        // Check if user exists
-        User user = userRepository.findByPhone(phone).orElse(null);
+        // Check if user exists with retry for MongoDB connection issues
+        User user = null;
+        int retries = 3;
+        Exception lastException = null;
+        
+        for (int i = 0; i < retries; i++) {
+            try {
+                user = userRepository.findByPhone(phone).orElse(null);
+                break; // Success, exit retry loop
+            } catch (Exception e) {
+                lastException = e;
+                log.warn("MongoDB query attempt {} failed: {}", i + 1, e.getMessage());
+                if (i < retries - 1) {
+                    try {
+                        Thread.sleep(1000 * (i + 1)); // Exponential backoff
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            }
+        }
+        
+        if (lastException != null && user == null) {
+            // If all retries failed and we couldn't even check, try to create anyway
+            log.warn("All MongoDB retries failed, attempting to create user anyway");
+        }
+        
         boolean isNewUser = user == null;
         
         if (isNewUser) {

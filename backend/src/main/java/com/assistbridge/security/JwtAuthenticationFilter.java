@@ -34,13 +34,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String userId = tokenProvider.getUserIdFromToken(token);
             String role = tokenProvider.getRoleFromToken(token);
             
-            User user = userRepository.findById(userId).orElse(null);
-            if (user != null) {
-                var authority = new SimpleGrantedAuthority("ROLE_" + role);
-                var authentication = new UsernamePasswordAuthenticationToken(
-                        user, null, Collections.singletonList(authority));
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+            var authority = new SimpleGrantedAuthority("ROLE_" + role);
+            Object principal = userRepository.findById(userId).orElse(null);
+            if (principal == null) {
+                // Support hardcoded admin tokens where no DB user exists
+                principal = userId;
             }
+            var authentication = new UsernamePasswordAuthenticationToken(
+                    principal, null, Collections.singletonList(authority));
+            SecurityContextHolder.getContext().setAuthentication(authentication);
         }
         
         filterChain.doFilter(request, response);

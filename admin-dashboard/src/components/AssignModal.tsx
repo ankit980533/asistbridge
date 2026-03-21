@@ -17,7 +17,11 @@ export default function AssignModal({ request, onClose, onAssigned }: AssignModa
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    adminApi.getActiveVolunteers().then((res) => setVolunteers(res.data.data))
+    adminApi.getActiveVolunteers().then((res) => {
+      // Filter out the user who raised this request
+      const filtered = res.data.data.filter((v: User) => v.id !== request.userId)
+      setVolunteers(filtered)
+    })
   }, [])
 
   const handleAssign = async () => {

@@ -6,7 +6,6 @@ import '../../providers/request_provider.dart';
 import '../../services/accessibility_service.dart';
 import '../../utils/theme.dart';
 import '../../widgets/voice_button.dart';
-import '../volunteer/volunteer_home_screen.dart';
 import 'accessible_raise_request_screen.dart';
 import 'accessible_request_status_screen.dart';
 import '../auth/login_screen.dart';
@@ -124,31 +123,17 @@ class _AccessibleHomeScreenState extends State<AccessibleHomeScreen>
                     ),
                   ),
                   const SizedBox(height: 12),
-                  // Switch role & Logout row
+                  // Logout
                   _buildAnimatedCard(
                     index: 3,
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextButton.icon(
-                            onPressed: () => _switchRole(auth),
-                            icon: Icon(Icons.swap_horiz, color: Colors.blue.shade600),
-                            label: Text('Switch to Volunteer',
-                                style: TextStyle(
-                                    fontSize: 14, color: Colors.blue.shade600)),
-                          ),
-                        ),
-                        Container(width: 1, height: 24, color: Colors.grey.shade300),
-                        Expanded(
-                          child: TextButton.icon(
-                            onPressed: () => _logout(auth),
-                            icon: Icon(Icons.logout, color: Colors.grey.shade600),
-                            label: Text('Logout',
-                                style: TextStyle(
-                                    fontSize: 14, color: Colors.grey.shade600)),
-                          ),
-                        ),
-                      ],
+                    child: Center(
+                      child: TextButton.icon(
+                        onPressed: () => _logout(auth),
+                        icon: Icon(Icons.logout, color: Colors.grey.shade600),
+                        label: Text('Logout',
+                            style: TextStyle(
+                                fontSize: 14, color: Colors.grey.shade600)),
+                      ),
                     ),
                   ),
                 ],
@@ -440,39 +425,4 @@ class _AccessibleHomeScreenState extends State<AccessibleHomeScreen>
     }
   }
 
-  Future<void> _switchRole(AuthProvider auth) async {
-    _accessibility.speak('Switching to volunteer mode');
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Switch to Volunteer?'),
-        content: const Text(
-            'Your pending help requests will be cancelled. '
-            'You can switch back anytime.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              style: TextButton.styleFrom(
-                  foregroundColor: AppTheme.primaryColor),
-              child: const Text('Switch')),
-        ],
-      ),
-    );
-
-    if (confirmed != true || !mounted) return;
-
-    final success = await auth.switchRole();
-    if (success && mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const VolunteerHomeScreen()),
-        (route) => false,
-      );
-    } else if (mounted) {
-      _accessibility.speak('Failed to switch role');
-    }
-  }
 }

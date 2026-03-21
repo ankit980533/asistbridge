@@ -9,8 +9,16 @@ import '../volunteer/volunteer_home_screen.dart';
 class OtpScreen extends StatefulWidget {
   final String phone;
   final String role;
+  final String? autoFilledName;
+  final bool switchRole;
   
-  const OtpScreen({super.key, required this.phone, required this.role});
+  const OtpScreen({
+    super.key,
+    required this.phone,
+    required this.role,
+    this.autoFilledName,
+    this.switchRole = false,
+  });
 
   @override
   State<OtpScreen> createState() => _OtpScreenState();
@@ -24,6 +32,10 @@ class _OtpScreenState extends State<OtpScreen> {
   @override
   void initState() {
     super.initState();
+    // Pre-fill name if user already exists
+    if (widget.autoFilledName != null) {
+      _nameController.text = widget.autoFilledName!;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _accessibility.announceScreen(
         'Verification Screen',
@@ -154,6 +166,7 @@ class _OtpScreenState extends State<OtpScreen> {
       widget.phone, otp, 
       name: name.isNotEmpty ? name : null,
       role: widget.role,
+      switchRole: widget.switchRole,
     );
     
     if (success && mounted) {

@@ -4,7 +4,6 @@ import '../../providers/auth_provider.dart';
 import '../../providers/request_provider.dart';
 import '../../utils/theme.dart';
 import '../../widgets/request_card.dart';
-import '../user/accessible_home_screen.dart';
 import 'volunteer_request_detail_screen.dart';
 import '../auth/login_screen.dart';
 
@@ -157,18 +156,6 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen>
                 color: Colors.white.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.swap_horiz, color: Colors.white, size: 22),
-            ),
-            tooltip: 'Switch to User mode',
-            onPressed: () => _switchRole(auth),
-          ),
-          IconButton(
-            icon: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
               child: const Icon(Icons.logout, color: Colors.white, size: 22),
             ),
             tooltip: 'Logout',
@@ -225,44 +212,4 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen>
     }
   }
 
-  Future<void> _switchRole(AuthProvider auth) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Switch to User Mode?'),
-        content: const Text(
-            'Your active assigned requests will be unassigned and sent back for reassignment. '
-            'You can switch back anytime.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              style: TextButton.styleFrom(
-                  foregroundColor: AppTheme.primaryColor),
-              child: const Text('Switch')),
-        ],
-      ),
-    );
-
-    if (confirmed != true || !mounted) return;
-
-    final success = await auth.switchRole();
-    if (success && mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const AccessibleHomeScreen()),
-        (route) => false,
-      );
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(auth.error ?? 'Failed to switch role'),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      );
-    }
-  }
 }

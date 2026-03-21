@@ -19,5 +19,7 @@ public class OtpVerifyRequest {
     
     private String role; // VOLUNTEER or VISUALLY_IMPAIRED
     
+    private Boolean switchRole; // true if user confirmed role switch
+    
     private String fcmToken;
 }

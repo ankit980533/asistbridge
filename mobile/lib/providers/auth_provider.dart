@@ -56,7 +56,7 @@ class AuthProvider extends ChangeNotifier {
   }
   
   // Verify OTP
-  Future<bool> verifyOtp(String phone, String otp, {String? name, String? role}) async {
+  Future<bool> verifyOtp(String phone, String otp, {String? name, String? role, bool switchRole = false}) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -75,6 +75,7 @@ class AuthProvider extends ChangeNotifier {
         'firebaseToken': firebaseToken,
         'name': name,
         'role': role,
+        'switchRole': switchRole,
       });
       
       final data = response.data['data'];

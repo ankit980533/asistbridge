@@ -90,6 +90,24 @@ public class AuthService {
             user = userRepository.save(user);
         }
         
+        // If existing user logs in with a different role and confirmed switch
+        if (!isNewUser && Boolean.TRUE.equals(request.getSwitchRole())
+                && request.getRole() != null && !request.getRole().isEmpty()) {
+            User.Role requestedRole = User.Role.valueOf(request.getRole());
+            if (user.getRole() != requestedRole && user.getRole() != User.Role.ADMIN) {
+                user.setRole(requestedRole);
+                user.setUpdatedAt(LocalDateTime.now());
+                user = userRepository.save(user);
+            }
+        }
+        
+        // Update name if provided and user already exists
+        if (!isNewUser && request.getName() != null && !request.getName().isEmpty()) {
+            user.setName(request.getName());
+            user.setUpdatedAt(LocalDateTime.now());
+            user = userRepository.save(user);
+        }
+        
         String token = tokenProvider.generateToken(user.getId(), user.getRole().name());
         
         return AuthResponse.builder()
@@ -121,4 +139,14 @@ public class AuthService {
                 .newUser(false)
                 .build();
     }
+
+    public java.util.Map<String, String> lookupByPhone(String phone) {
+        java.util.Map<String, String> result = new java.util.HashMap<>();
+        userRepository.findByPhone(phone).ifPresent(user -> {
+            result.put("name", user.getName());
+            result.put("role", user.getRole().name());
+        });
+        return result;
+    }
+
 }

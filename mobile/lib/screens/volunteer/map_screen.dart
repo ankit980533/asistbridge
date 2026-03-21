@@ -57,9 +57,15 @@ class MapScreen extends StatelessWidget {
   }
 
   Future<void> _openInMaps() async {
-    final uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$latitude,$longitude');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
+    // Try geo: URI first — opens Google Maps directly on Android
+    final geoUri = Uri.parse('geo:$latitude,$longitude?q=$latitude,$longitude');
+    try {
+      final launched = await launchUrl(geoUri, mode: LaunchMode.externalApplication);
+      if (launched) return;
+    } catch (_) {}
+
+    // Fallback to Google Maps web URL
+    final webUri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$latitude,$longitude');
+    await launchUrl(webUri, mode: LaunchMode.externalApplication);
   }
 }

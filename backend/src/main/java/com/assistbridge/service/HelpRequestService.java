@@ -60,6 +60,11 @@ public class HelpRequestService {
             throw new RuntimeException("User is not a volunteer");
         }
         
+        // Prevent assigning a request to the same user who raised it
+        if (volunteerId.equals(request.getUserId())) {
+            throw new RuntimeException("Cannot assign a request to the same user who raised it");
+        }
+        
         request.setAssignedVolunteerId(volunteerId);
         request.setAssignedVolunteerName(volunteer.getName());
         request.setStatus(HelpRequest.Status.ASSIGNED);
@@ -162,7 +167,10 @@ public class HelpRequestService {
     }
     
     public List<HelpRequest> getVolunteerRequests(String volunteerId) {
-        return requestRepository.findByAssignedVolunteerId(volunteerId);
+        List<HelpRequest> requests = requestRepository.findByAssignedVolunteerId(volunteerId);
+        // Filter out requests the volunteer raised themselves (when they were a user)
+        requests.removeIf(r -> volunteerId.equals(r.getUserId()));
+        return requests;
     }
     
     public List<HelpRequest> getActiveVolunteerRequests(String volunteerId) {

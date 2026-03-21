@@ -51,4 +51,15 @@ public class AuthController {
         
         return ResponseEntity.status(401).body(ApiResponse.error("Invalid credentials"));
     }
+
+    @PostMapping("/lookup")
+    public ResponseEntity<ApiResponse<Map<String, String>>> lookupPhone(@RequestBody Map<String, String> request) {
+        String phone = request.get("phone");
+        if (phone == null || phone.isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.success(Map.of()));
+        }
+        Map<String, String> result = authService.lookupByPhone(phone);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
 }

@@ -8,6 +8,7 @@ class ApiConstants {
   // Auth
   static const String sendOtp = '/auth/send-otp';
   static const String verifyOtp = '/auth/verify-otp';
+  static const String lookupPhone = '/auth/lookup';
   
   // User
   static const String currentUser = '/users/me';

@@ -6,6 +6,7 @@ import 'providers/auth_provider.dart';
 import 'providers/request_provider.dart';
 import 'providers/notification_provider.dart';
 import 'screens/splash_screen.dart';
+import 'services/accessibility_service.dart';
 import 'utils/theme.dart';
 
 void main() async {
@@ -21,6 +22,10 @@ class AssistBridgeApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Keep screen reader status in sync whenever the app rebuilds
+    // (e.g., user toggles TalkBack while app is open)
+    AccessibilityService().updateScreenReaderStatus(context);
+
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),

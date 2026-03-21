@@ -3,8 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:vibration/vibration.dart';
 import '../services/accessibility_service.dart';
 
-/// Large, accessible button with voice feedback for visually impaired users
-class VoiceButton extends StatelessWidget {
+class VoiceButton extends StatefulWidget {
   final String label;
   final String voiceLabel;
   final String? voiceHint;
@@ -14,7 +13,7 @@ class VoiceButton extends StatelessWidget {
   final Color? textColor;
   final bool isLoading;
   final double height;
-  
+
   const VoiceButton({
     super.key,
     required this.label,
@@ -29,61 +28,111 @@ class VoiceButton extends StatelessWidget {
   });
 
   @override
+  State<VoiceButton> createState() => _VoiceButtonState();
+}
+
+class _VoiceButtonState extends State<VoiceButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pressController;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _pressController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.96).animate(
+      CurvedAnimation(parent: _pressController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pressController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final accessibility = AccessibilityService();
-    
+    final bgColor =
+        widget.backgroundColor ?? Theme.of(context).colorScheme.primary;
+
     return Semantics(
-      label: voiceLabel,
-      hint: voiceHint,
+      label: widget.voiceLabel,
+      hint: widget.voiceHint,
       button: true,
-      enabled: !isLoading,
+      enabled: !widget.isLoading,
       child: GestureDetector(
+        onTapDown: (_) => _pressController.forward(),
+        onTapUp: (_) => _pressController.reverse(),
+        onTapCancel: () => _pressController.reverse(),
         onLongPress: () {
-          // Long press reads the button description
-          accessibility.speak(voiceHint ?? voiceLabel);
+          accessibility.speak(widget.voiceHint ?? widget.voiceLabel);
           HapticFeedback.mediumImpact();
         },
-        child: ElevatedButton(
-          onPressed: isLoading ? null : () async {
-            // Vibrate on tap
-            if (await Vibration.hasVibrator() ?? false) {
-              Vibration.vibrate(duration: 50);
-            }
-            HapticFeedback.lightImpact();
-            onPressed();
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: backgroundColor ?? Theme.of(context).colorScheme.primary,
-            foregroundColor: textColor ?? Colors.white,
-            minimumSize: Size(double.infinity, height),
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-            shape: RoundedRectangleBorder(
+        child: ScaleTransition(
+          scale: _scaleAnimation,
+          child: Container(
+            height: widget.height,
+            decoration: BoxDecoration(
+              color: bgColor,
               borderRadius: BorderRadius.circular(20),
-            ),
-            elevation: 4,
-          ),
-          child: isLoading
-              ? const SizedBox(
-                  height: 30,
-                  width: 30,
-                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (icon != null) ...[
-                      Icon(icon, size: 32),
-                      const SizedBox(width: 16),
-                    ],
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+              boxShadow: [
+                BoxShadow(
+                  color: bgColor.withOpacity(0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
                 ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(20),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: widget.isLoading
+                    ? null
+                    : () async {
+                        if (await Vibration.hasVibrator() ?? false) {
+                          Vibration.vibrate(duration: 50);
+                        }
+                        HapticFeedback.lightImpact();
+                        widget.onPressed();
+                      },
+                child: Center(
+                  child: widget.isLoading
+                      ? const SizedBox(
+                          height: 28,
+                          width: 28,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 3),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (widget.icon != null) ...[
+                              Icon(widget.icon,
+                                  size: 28,
+                                  color: widget.textColor ?? Colors.white),
+                              const SizedBox(width: 14),
+                            ],
+                            Text(
+                              widget.label,
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: widget.textColor ?? Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );

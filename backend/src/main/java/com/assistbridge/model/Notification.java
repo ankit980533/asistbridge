@@ -34,6 +34,7 @@ public class Notification {
     public enum NotificationType {
         REQUEST_CREATED,
         REQUEST_ASSIGNED,
+        REQUEST_UPDATED,
         VOLUNTEER_ACCEPTED,
         REQUEST_IN_PROGRESS,
         REQUEST_COMPLETED,

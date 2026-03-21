@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart' as fb;
 import '../models/user.dart';
 import '../services/api_service.dart';
 import '../services/firebase_auth_service.dart';
+import '../services/accessibility_service.dart';
 import '../utils/constants.dart';
 
 class AuthProvider extends ChangeNotifier {
@@ -144,6 +145,8 @@ class AuthProvider extends ChangeNotifier {
     await _api.clearToken();
     await _firebaseAuth.signOut();
     _user = null;
+    // Re-enable TTS role flag so login screen is accessible for next user
+    AccessibilityService().setRoleEnabled(true);
     notifyListeners();
   }
   
@@ -152,6 +155,39 @@ class AuthProvider extends ChangeNotifier {
       await _api.put('${ApiConstants.updateLocation}?latitude=$lat&longitude=$lng');
     } catch (e) {
       // Silent fail
+    }
+  }
+
+  /// Switch between VOLUNTEER and VISUALLY_IMPAIRED roles.
+  /// Returns true on success. Updates token, user, and TTS state.
+  Future<bool> switchRole() async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await _api.put(ApiConstants.switchRole);
+      final data = response.data['data'];
+
+      await _api.setToken(data['token']);
+      _user = User(
+        id: data['userId'],
+        name: data['name'],
+        phone: data['phone'],
+        role: data['role'],
+      );
+
+      // Update TTS: enabled for visually impaired, disabled for volunteer
+      AccessibilityService().setRoleEnabled(_user!.isVisuallyImpaired);
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString().replaceAll('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
     }
   }
 }

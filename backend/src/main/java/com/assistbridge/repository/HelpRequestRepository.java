@@ -13,6 +13,8 @@ public interface HelpRequestRepository extends MongoRepository<HelpRequest, Stri
     List<HelpRequest> findByStatusIn(List<HelpRequest.Status> statuses);
     List<HelpRequest> findByUserIdAndStatus(String userId, HelpRequest.Status status);
     List<HelpRequest> findByAssignedVolunteerIdAndStatus(String volunteerId, HelpRequest.Status status);
+    List<HelpRequest> findByAssignedVolunteerIdAndStatusIn(String volunteerId, List<HelpRequest.Status> statuses);
+    List<HelpRequest> findByUserIdAndStatusIn(String userId, List<HelpRequest.Status> statuses);
     long countByStatus(HelpRequest.Status status);
     long countByAssignedVolunteerId(String volunteerId);
 }

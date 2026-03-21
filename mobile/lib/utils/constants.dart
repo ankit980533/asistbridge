@@ -12,6 +12,7 @@ class ApiConstants {
   // User
   static const String currentUser = '/users/me';
   static const String updateLocation = '/users/me/location';
+  static const String switchRole = '/users/me/switch-role';
   
   // Requests
   static const String requests = '/requests';

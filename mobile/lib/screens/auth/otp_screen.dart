@@ -157,9 +157,15 @@ class _OtpScreenState extends State<OtpScreen> {
     );
     
     if (success && mounted) {
-      _accessibility.speak('Login successful. Welcome to AssistBridge.');
+      // Enable/disable TTS based on role
+      final isVolunteer = widget.role == 'VOLUNTEER';
+      _accessibility.setRoleEnabled(!isVolunteer);
       
-      Widget destination = widget.role == 'VOLUNTEER' 
+      if (!isVolunteer) {
+        _accessibility.speak('Login successful. Welcome to AssistBridge.');
+      }
+      
+      Widget destination = isVolunteer 
           ? const VolunteerHomeScreen() 
           : const AccessibleHomeScreen();
       

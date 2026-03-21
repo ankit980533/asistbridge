@@ -1,11 +1,15 @@
 package com.assistbridge.service;
 
 import com.assistbridge.dto.UpdateProfileDto;
+import com.assistbridge.model.HelpRequest;
+import com.assistbridge.model.Notification;
 import com.assistbridge.model.User;
+import com.assistbridge.repository.HelpRequestRepository;
 import com.assistbridge.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 
 @Service
@@ -13,6 +17,8 @@ import java.util.List;
 public class UserService {
     
     private final UserRepository userRepository;
+    private final HelpRequestRepository requestRepository;
+    private final NotificationService notificationService;
     
     public User getUserById(String userId) {
         return userRepository.findById(userId)
@@ -50,5 +56,54 @@ public class UserService {
     
     public List<User> getActiveVolunteers() {
         return userRepository.findByRoleAndActive(User.Role.VOLUNTEER, true);
+    }
+
+    public User switchRole(String userId) {
+        User user = getUserById(userId);
+
+        if (user.getRole() == User.Role.ADMIN) {
+            throw new RuntimeException("Admin cannot switch roles");
+        }
+
+        if (user.getRole() == User.Role.VOLUNTEER) {
+            // Volunteer → User: unassign all active requests back to PENDING
+            List<HelpRequest> assignedRequests = requestRepository
+                    .findByAssignedVolunteerIdAndStatusIn(userId,
+                            Arrays.asList(HelpRequest.Status.ASSIGNED, HelpRequest.Status.IN_PROGRESS));
+
+            for (HelpRequest req : assignedRequests) {
+                req.setAssignedVolunteerId(null);
+                req.setAssignedVolunteerName(null);
+                req.setAssignedAt(null);
+                req.setStatus(HelpRequest.Status.PENDING);
+                req.setUpdatedAt(LocalDateTime.now());
+                requestRepository.save(req);
+
+                // Notify the user that their request needs reassignment
+                notificationService.sendNotification(req.getUserId(),
+                        "Volunteer Unavailable",
+                        "Your volunteer is no longer available. We are finding a new one.",
+                        Notification.NotificationType.REQUEST_UPDATED, req.getId());
+            }
+        } else {
+            // User → Volunteer: cancel all pending requests they created
+            List<HelpRequest> pendingRequests = requestRepository
+                    .findByUserIdAndStatusIn(userId,
+                            Arrays.asList(HelpRequest.Status.PENDING, HelpRequest.Status.ADMIN_REVIEW));
+
+            for (HelpRequest req : pendingRequests) {
+                req.setStatus(HelpRequest.Status.CANCELLED);
+                req.setUpdatedAt(LocalDateTime.now());
+                requestRepository.save(req);
+            }
+        }
+
+        User.Role newRole = user.getRole() == User.Role.VOLUNTEER
+                ? User.Role.VISUALLY_IMPAIRED
+                : User.Role.VOLUNTEER;
+
+        user.setRole(newRole);
+        user.setUpdatedAt(LocalDateTime.now());
+        return userRepository.save(user);
     }
 }

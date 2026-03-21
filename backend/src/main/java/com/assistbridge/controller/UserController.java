@@ -1,8 +1,10 @@
 package com.assistbridge.controller;
 
 import com.assistbridge.dto.ApiResponse;
+import com.assistbridge.dto.AuthResponse;
 import com.assistbridge.dto.UpdateProfileDto;
 import com.assistbridge.model.User;
+import com.assistbridge.security.JwtTokenProvider;
 import com.assistbridge.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
     
     private final UserService userService;
+    private final JwtTokenProvider tokenProvider;
     
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<User>> getCurrentUser(@AuthenticationPrincipal User user) {
@@ -36,5 +39,22 @@ public class UserController {
             @RequestParam Double longitude) {
         User updated = userService.updateLocation(user.getId(), latitude, longitude);
         return ResponseEntity.ok(ApiResponse.success(updated));
+    }
+
+    @PutMapping("/me/switch-role")
+    public ResponseEntity<ApiResponse<AuthResponse>> switchRole(@AuthenticationPrincipal User user) {
+        User updated = userService.switchRole(user.getId());
+        String newToken = tokenProvider.generateToken(updated.getId(), updated.getRole().name());
+        
+        AuthResponse response = AuthResponse.builder()
+                .token(newToken)
+                .userId(updated.getId())
+                .name(updated.getName())
+                .phone(updated.getPhone())
+                .role(updated.getRole())
+                .newUser(false)
+                .build();
+        
+        return ResponseEntity.ok(ApiResponse.success("Role switched to " + updated.getRole(), response));
     }
 }
